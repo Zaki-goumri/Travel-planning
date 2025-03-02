@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PrismaClient, User } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
@@ -28,6 +28,21 @@ export class UserService {
         throw new Error(`Failed to hash password: ${error.message}`);
       } else {
         throw new Error('Failed to hash password: Unknown error');
+      }
+    }
+  }
+
+  async validatePassword(
+    password: string,
+    hashedPassword: string,
+  ): Promise<boolean> {
+    try {
+      return await bcrypt.compare(password, hashedPassword);
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      } else {
+        throw new Error('Failed to validate password: Unknown error');
       }
     }
   }
