@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaClient, User } from '@prisma/client';
 import { UserService } from '../user/user.service';
+import emailValidator from 'email-validator';
 
 type SigninInput = {
   email: string;
@@ -29,11 +30,14 @@ export class AuthService {
     }
   }
 
-  async signup(data: SignupInput): Promise<string | Error> {
+  async signup(data: SignupInput): Promise<string> {
     try {
+      if (!emailValidator.validate(data.email)) {
+        throw new BadRequestException('Invalid email');
+      }
       const user = await this.userService.findByEmail(data.email);
       if (user) {
-        throw new Error('User already exists');
+        throw new BadRequestException('User already exists');
       }
       const hashedPassword = await this.userService.hashPassword(data.password);
       await this.prisma.user.create({
@@ -43,28 +47,31 @@ export class AuthService {
           name: data.name,
         },
       });
-      return 'you are registerd';
+      return 'You are registered';
     } catch (error) {
-      if (error instanceof Error) {
-        return new Error(`Failed to create user: ${error.message}`);
+      if (error instanceof BadRequestException) {
+        throw error;
       } else {
-        return new Error('Failed to create user: Unknown error');
+        throw new BadRequestException('Failed to sign up: Unknown error');
       }
     }
   }
 
   async signin(data: SigninInput): Promise<User> {
     try {
+      if (!emailValidator.validate(data.email)) {
+        throw new BadRequestException('Invalid email');
+      }
       const user = await this.userService.findByEmail(data.email);
       if (!user) {
-        throw new Error('User not found');
+        throw new BadRequestException('User not found');
       }
       return user;
     } catch (error) {
-      if (error instanceof Error) {
-        throw new Error(`Failed to sign in: ${error.message}`);
+      if (error instanceof BadRequestException) {
+        throw error;
       } else {
-        throw new Error('Failed to sign in: Unknown error');
+        throw new BadRequestException('Failed to sign in: Unknown error');
       }
     }
   }
