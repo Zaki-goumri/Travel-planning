@@ -1,7 +1,12 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { PrismaClient, User } from '@prisma/client';
 import { UserService } from '../user/user.service';
 import emailValidator from 'email-validator';
+import { JwtService } from '@nestjs/jwt';
 
 type SigninInput = {
   email: string;
@@ -18,7 +23,10 @@ type SignupInput = {
 export class AuthService {
   private prisma: PrismaClient;
 
-  constructor(private userService: UserService) {
+  constructor(
+    private userService: UserService,
+    private jwtService: JwtService,
+  ) {
     try {
       this.prisma = new PrismaClient();
     } catch (error) {
@@ -57,7 +65,9 @@ export class AuthService {
     }
   }
 
-  async signin(data: SigninInput): Promise<User> {
+  async signin(
+    data: SigninInput,
+  ): Promise<User & { accessToken: string; refreshToken: string }> {
     try {
       if (!emailValidator.validate(data.email)) {
         throw new BadRequestException('Invalid email');
@@ -66,12 +76,28 @@ export class AuthService {
       if (!user) {
         throw new BadRequestException('User not found');
       }
-      return user;
+      const isPasswordValid = await this.userService.validatePassword(
+        data.password,
+        user.password,
+      );
+      if (!isPasswordValid) {
+        throw new UnauthorizedException('wrong email or password');
+      }
+      const payload = { email: user.email, sub: user.id };
+      const token = await this.jwtService.signAsync(payload);
+      return {
+        ...user,
+        accessToken: token,
+        refreshToken: token,
+      };
     } catch (error) {
-      if (error instanceof BadRequestException) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof UnauthorizedException
+      ) {
         throw error;
       } else {
-        throw new BadRequestException('Failed to sign in: Unknown error');
+        throw new BadRequestException(`Failed to sign in: ${error as any}`);
       }
     }
   }
