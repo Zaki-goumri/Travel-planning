@@ -38,7 +38,9 @@ export class AuthService {
     }
   }
 
-  async signup(data: SignupInput): Promise<string> {
+  async signup(
+    data: SignupInput,
+  ): Promise<User & { accessToken: string; refreshToken: string }> {
     try {
       if (!emailValidator.validate(data.email)) {
         throw new BadRequestException('Invalid email');
@@ -48,19 +50,25 @@ export class AuthService {
         throw new BadRequestException('User already exists');
       }
       const hashedPassword = await this.userService.hashPassword(data.password);
-      await this.prisma.user.create({
+      const newUser = await this.prisma.user.create({
         data: {
           email: data.email,
           password: hashedPassword,
           name: data.name,
         },
       });
-      return 'You are registered';
+      const payload = { email: newUser.email, sub: newUser.id };
+      const token = await this.jwtService.signAsync(payload);
+      return {
+        ...newUser,
+        accessToken: token,
+        refreshToken: token,
+      };
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
       } else {
-        throw new BadRequestException('Failed to sign up: Unknown error');
+        throw new BadRequestException(`Failed to sign up: ${error as any}`);
       }
     }
   }
