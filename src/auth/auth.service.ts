@@ -92,11 +92,19 @@ export class AuthService {
         throw new UnauthorizedException('wrong email or password');
       }
       const payload = { email: user.email, sub: user.id };
-      const token = await this.jwtService.signAsync(payload);
+      const accessToken = await this.jwtService.signAsync(payload, {
+        expiresIn: '60s',
+      });
+      const refreshToken = await this.jwtService.signAsync(
+        { sub: user.id },
+        {
+          expiresIn: '7d',
+        },
+      );
       return {
         ...user,
-        accessToken: token,
-        refreshToken: token,
+        accessToken: accessToken,
+        refreshToken: refreshToken,
       };
     } catch (error) {
       if (
