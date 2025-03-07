@@ -4,6 +4,8 @@ import { AuthService } from './auth.service';
 import { Body, Post, HttpCode, HttpStatus, Res } from '@nestjs/common';
 import { SignupDTO, SigninDTO } from './dto/signup-auth.dto';
 import { Response } from 'express';
+import { AuthGuard } from '@nestjs/passport';
+import { Get, Req, UseGuards } from '@nestjs/common';
 
 @Controller('auth')
 export class AuthController {
@@ -41,5 +43,17 @@ export class AuthController {
     });
     res.header('Authorization', `Bearer ${accessToken}`);
     return user;
+  }
+
+  @Get('google')
+  @UseGuards(AuthGuard('google'))
+  async googleAuth() {
+  }
+
+  @Get('google/callback')
+  @UseGuards(AuthGuard('google'))
+  googleAuthRedirect(@Req() req: any, @Res() res: any) {
+    console.log(req.user);
+    res.status(302).redirect('/');
   }
 }

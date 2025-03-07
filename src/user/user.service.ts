@@ -1,22 +1,11 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { PrismaClient, User } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { User } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 @Injectable()
 export class UserService {
-  private prisma: PrismaClient;
-
-  constructor() {
-    try {
-      this.prisma = new PrismaClient();
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new Error(`Failed to initialize PrismaClient: ${error.message}`);
-      } else {
-        throw new Error('Failed to initialize PrismaClient: Unknown error');
-      }
-    }
-  }
+  constructor(private prisma: PrismaService) {}
 
   async hashPassword(password: string): Promise<string> {
     try {

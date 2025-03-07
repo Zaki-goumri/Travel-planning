@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  api:
+    container_name: travel-planning
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file: .env  # Correct placement of env_file
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/travel-planning
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - postgres
+    command: >
+      sh -c "npx prisma migrate deploy &&
+             npx prisma generate &&
+             pnpm run start:dev"
+    networks:
+      - nestjs-network
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=travel-planning
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - prisma-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  nestjs-network:
+
+volumes:
+  postgres-data:

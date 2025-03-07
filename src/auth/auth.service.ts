@@ -3,7 +3,8 @@ import {
   BadRequestException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { PrismaClient, User } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { User } from '@prisma/client';
 import { UserService } from '../user/user.service';
 import emailValidator from 'email-validator';
 import { JwtService } from '@nestjs/jwt';
@@ -21,21 +22,19 @@ type SignupInput = {
 
 @Injectable()
 export class AuthService {
-  private prisma: PrismaClient;
-
   constructor(
     private userService: UserService,
     private jwtService: JwtService,
-  ) {
-    try {
-      this.prisma = new PrismaClient();
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new Error(`Failed to initialize PrismaClient: ${error.message}`);
-      } else {
-        throw new Error('Failed to initialize PrismaClient: Unknown error');
-      }
+    private prisma: PrismaService,
+  ) {}
+
+  async validateUser(email: string, pass: string): Promise<any> {
+    const user = await this.userService.findByEmail(email);
+    if (user && user.password === pass) {
+      const { password, ...result } = user;
+      return result;
     }
+    return null;
   }
 
   async signup(
