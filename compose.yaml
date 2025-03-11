@@ -1,14 +1,50 @@
-version: '3.8'
-
+version: '3.7'
 services:
-  api:
+  postgres:
+    image: postgres:15-alpine
+    hostname: postgres
+    container_name: travel-planning-postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=travel-planning
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - prisma-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d travel-planning"]
+      interval: 5s
+      timeout: 2s
+      retries: 20
+  redis:
+      image: redis:7-alpine
+      hostname: redis
+      container_name: travel-planning-redis
+      restart: always
+      ports:
+        - '6379:6379'
+      volumes:
+        - redis-data:/data
+      networks:
+        - prisma-network
+      healthcheck:
+        test: ["CMD", "redis-cli", "ping"]
+        interval: 5s
+        timeout: 2s
+        retries: 20
+  server:
     container_name: travel-planning
     build:
       context: .
       dockerfile: Dockerfile
-    env_file: .env  # Correct placement of env_file
     ports:
-      - "3000:3000"
+      - '3000:3000'
+    stdin_open: true
+    tty: true
     environment:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/travel-planning
@@ -16,36 +52,33 @@ services:
       - .:/usr/src/app
       - /usr/src/app/node_modules
     depends_on:
-      - postgres
-    command: >
-      sh -c "npx prisma migrate deploy &&
-             npx prisma generate &&
-             pnpm run start:dev"
-    networks:
-      - nestjs-network
-    restart: unless-stopped
-
-  postgres:
-    image: postgres:15-alpine
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=travel-planning
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env.docker
     networks:
       - prisma-network
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
+  prisma-studio:
+    image: node:lts-alpine3.17
+    working_dir: /usr/src/app
+    volumes:
+      - .:/usr/src/app
+    command: npx prisma studio --port 5555 --browser none
+    ports:
+      - "5555:5555"
+    env_file:
+      - .env.docker
+    networks:
+      - prisma-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      server:
+        condition: service_started
 networks:
-  nestjs-network:
-
+  prisma-network:
+    name: prisma-network
 volumes:
   postgres-data:
+  redis-data:
