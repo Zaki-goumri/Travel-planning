@@ -29,6 +29,8 @@ model Trip {
 model Destination {
   id        String   @id @default(cuid())
   name      String
+  rating    Float
+  description String
   tripID    Trip[]   @relation("TripDestination")
   offers    OffersActivity[] @relation("DestinationOffer")
 }

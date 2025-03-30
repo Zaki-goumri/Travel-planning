@@ -22,10 +22,12 @@
     "prisma-studio": "docker exec travel-planning npx prisma studio"
   },
   "dependencies": {
+    "@elastic/elasticsearch": "^8.17.1",
     "@nestjs/cache-manager": "^3.0.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.1",
     "@nestjs/core": "^11.0.1",
+    "@nestjs/elasticsearch": "^11.0.0",
     "@nestjs/jwt": "^11.0.0",
     "@nestjs/mapped-types": "*",
     "@nestjs/passport": "^11.0.5",

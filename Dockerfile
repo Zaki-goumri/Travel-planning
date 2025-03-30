@@ -44,7 +44,7 @@ COPY --from=build /usr/src/app/dist ./dist
 COPY --from=build /usr/src/app/prisma ./prisma
 
 # Generate Prisma client again in production to ensure it matches the environment
-RUN npx prisma db push 
+RUN npx prisma generate
 
 # Expose the port the app runs on
 EXPOSE 3000

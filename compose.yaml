@@ -1,5 +1,24 @@
 version: '3.7'
 services:
+  elasticsearch: 
+      image: docker.elastic.co/elasticsearch/elasticsearch:8.9.0
+      container_name: travel-planning-elastic
+      environment:
+        - discovery.type=single-node
+        - ES_JAVA_OPTS=-Xms512m -Xmx512m
+        - xpack.security.enabled=false
+      volumes:
+        - elasticsearch-data:/usr/share/elasticsearch/data
+      ports:
+        - "9200:9200"
+        - "9300:9300"
+      networks:
+        - prisma-network
+      healthcheck:
+        test: ["CMD-SHELL", "curl -f http://localhost:9200 || exit 1"]
+        interval: 10s
+        timeout: 5s
+        retries: 12
   postgres:
     image: postgres:15-alpine
     hostname: postgres
@@ -54,6 +73,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      elasticsearch:  # 👈 Add dependency
+        condition: service_healthy
     env_file:
       - .env.docker
     networks:
@@ -82,3 +103,4 @@ networks:
 volumes:
   postgres-data:
   redis-data:
+  elasticsearch-data:
