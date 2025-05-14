@@ -1,13 +1,9 @@
 // src/destination/destination.controller.ts
 import { Controller, Get, Query } from '@nestjs/common';
 import { DestinationService } from './destination.service';
-import { ElasticsearchIndexService } from '../elastic-search/elasticsearch-index.service';
 @Controller('destinations')
 export class DestinationController {
-  constructor(
-    private readonly destinationService: DestinationService,
-    private readonly elasticsearchIndexService: ElasticsearchIndexService,
-  ) {}
+  constructor(private readonly destinationService: DestinationService) {}
 
   @Get('search')
   async searchDestinations(
@@ -15,13 +11,7 @@ export class DestinationController {
     @Query('status') status?: string,
     @Query('minTemp') minTemp?: number,
     @Query('maxTemp') maxTemp?: number,
-  ) {
-    return this.destinationService.searchDestinations(searchQuery, {
-      status,
-      minTemp: minTemp ? Number(minTemp) : undefined,
-      maxTemp: maxTemp ? Number(maxTemp) : undefined,
-    });
-  }
+  ) {}
   // @Post('index')
   // async createIndex() {
   //   return this.elasticsearchIndexService.createDestinationsIndex();
