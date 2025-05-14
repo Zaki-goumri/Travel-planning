@@ -1,0 +1,106 @@
+version: '3.7'
+services:
+  elasticsearch: 
+      image: docker.elastic.co/elasticsearch/elasticsearch:8.9.0
+      container_name: travel-planning-elastic
+      environment:
+        - discovery.type=single-node
+        - ES_JAVA_OPTS=-Xms512m -Xmx512m
+        - xpack.security.enabled=false
+      volumes:
+        - elasticsearch-data:/usr/share/elasticsearch/data
+      ports:
+        - "9200:9200"
+        - "9300:9300"
+      networks:
+        - prisma-network
+      healthcheck:
+        test: ["CMD-SHELL", "curl -f http://localhost:9200 || exit 1"]
+        interval: 10s
+        timeout: 5s
+        retries: 12
+  postgres:
+    image: postgres:15-alpine
+    hostname: postgres
+    container_name: travel-planning-postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=travel-planning
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - prisma-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d travel-planning"]
+      interval: 5s
+      timeout: 2s
+      retries: 20
+  redis:
+      image: redis:7-alpine
+      hostname: redis
+      container_name: travel-planning-redis
+      restart: always
+      ports:
+        - '6379:6379'
+      volumes:
+        - redis-data:/data
+      networks:
+        - prisma-network
+      healthcheck:
+        test: ["CMD", "redis-cli", "ping"]
+        interval: 5s
+        timeout: 2s
+        retries: 20
+  server:
+    container_name: travel-planning
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '3000:3000'
+    stdin_open: true
+    tty: true
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/travel-planning
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      elasticsearch:  # 👈 Add dependency
+        condition: service_healthy
+    env_file:
+      - .env.docker
+    networks:
+      - prisma-network
+    restart: unless-stopped
+  prisma-studio:
+    image: node:lts-alpine3.17
+    working_dir: /usr/src/app
+    volumes:
+      - .:/usr/src/app
+    command: npx prisma studio --port 5555 --browser none
+    ports:
+      - "5555:5555"
+    env_file:
+      - .env.docker
+    networks:
+      - prisma-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      server:
+        condition: service_started
+networks:
+  prisma-network:
+    name: prisma-network
+volumes:
+  postgres-data:
+  redis-data:
+  elasticsearch-data:
